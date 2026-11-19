@@ -61,3 +61,29 @@ yinyuan-skills/
 ---
 
 *姻缘天注定，幸福自己争。祝各位早日觅得良缘！*
+
+
+## Native Rust core (experimental)
+
+This repository also contains a dependency-free, reusable Rust library (`yinyuan-core`) and a
+thin, headless CLI (`yinyuan`). Original skill and references are preserved.
+
+```sh
+cargo run -- doctor --json
+cargo run -- zodiac --a rat --b ox --json
+cargo run -- bazi --year-a 甲子 --year-b 乙丑 --day-a 丙午 --day-b 辛卯 --json
+cargo run -- ziwei --star 天府 --json
+cargo run -- fortune --name Alice --question "relationship?" --date 2026-11-19 --hour-branch 4 --json
+cargo run -- taohua --animal horse --year 2026 --json
+cargo run -- redline --animal horse --day-branch 午 --star 天府 --json
+```
+
+`src/lib.rs` exposes typed pure-Rust APIs; the CLI calls those same functions.
+See [migration coverage and limits](docs/MIGRATION.md).
+Precomputed charts are required for natal analyses; this crate does not invent
+astronomical birth charts, future predictions or unsupported composite scores.
+Results are cultural entertainment, not scientific predictions.
+
+**crates.io gate:** Original skill has no explicit license. `publish = false`
+remains until reference/verse copyright and attribution are verified. Format,
+Clippy and runtime tests are required before any release claim.
