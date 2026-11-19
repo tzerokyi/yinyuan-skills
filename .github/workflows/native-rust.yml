@@ -1,0 +1,65 @@
+name: Yinyuan native Rust
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+    paths: ['src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', 'references/**', '.github/workflows/native-rust.yml']
+  pull_request:
+    branches: [main]
+    paths: ['src/**', 'tests/**', 'Cargo.toml', 'Cargo.lock', 'references/**', '.github/workflows/native-rust.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yinyuan-native-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  core:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 20
+    env:
+      CARGO_BUILD_JOBS: '12'
+      CARGO_TARGET_DIR: ${{ runner.workspace }}/.cache/yinyuan-native-target
+      RUSTUP_TOOLCHAIN: '1.99.1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          clean: false
+          path: yinyuan-skills
+      - name: Native Rust format, lint, test, build and smoke
+        shell: bash
+        working-directory: ${{ github.workspace }}/yinyuan-skills
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.cargo/bin:/home/agent/.cargo/bin:$PATH"
+          echo "YINYUAN_SHA=$(git rev-parse HEAD)"
+          echo "YINYUAN_RUNNER=$(uname -s) cores=$(nproc) jobs=$CARGO_BUILD_JOBS"
+          rustc --version
+          cargo --version
+          if [[ "$(git log -1 --format=%s)" == *"[format]"* ]]; then
+            cargo fmt --all
+            count=0
+            while IFS= read -r -d '' file; do
+              if [[ "$file" == *.rs ]]; then
+                printf 'YINYUAN_FORMAT_BEGIN:%s\n' "$file"
+                base64 -w0 "$file"
+                printf '\nYINYUAN_FORMAT_END:%s\n' "$file"
+                count=$((count + 1))
+              fi
+            done < <(git diff --name-only -z -- '*.rs')
+            echo "YINYUAN_FORMAT_CHANGED=$count"
+            echo "FORMAT_ONLY: no build claim"
+            exit 0
+          fi
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-targets -- -D warnings
+          cargo test --locked --all-targets
+          cargo build --locked --release --bin yinyuan
+          "$CARGO_TARGET_DIR/release/yinyuan" doctor --json | grep -F '"engine":"native-rust"'
+          "$CARGO_TARGET_DIR/release/yinyuan" zodiac --a rat --b ox --json | grep -F '"relation":"six_harmony"'
+          "$CARGO_TARGET_DIR/release/yinyuan" fortune --name test --question love --date 2026-11-19 --hour-branch 4 --json | grep -F '"poem":'
+          echo "YINYUAN_NATIVE_GATE_PASS"
